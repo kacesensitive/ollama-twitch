@@ -16,15 +16,22 @@ const client = new tmi.Client(opts);
 
 const trigger: string = process.env.TRIGGER || '!llama';
 
+let isProcessing = false;
+
 client.connect().catch(console.error);
 
 client.on('message', async (channel, tags, message, self) => {
-    if (self) return;
+    if (self || isProcessing) return;
 
     if (message.toLowerCase().startsWith(trigger)) {
+        isProcessing = true;
         client.say(channel, '🦙');
+
         const query: string = message.replace(trigger, '').trim();
-        if (query.length === 0) return;
+        if (query.length === 0) {
+            isProcessing = false;
+            return;
+        }
 
         const sendChunks = async (chunk: string) => {
             await client.say(channel, chunk);
@@ -34,7 +41,8 @@ client.on('message', async (channel, tags, message, self) => {
             await makeOllamaRequest(query, sendChunks);
         } catch (err: any) {
             console.error(err);
+        } finally {
+            isProcessing = false;
         }
-
     }
 });
